@@ -1,0 +1,13 @@
+flow_name: whatsapp-group-indexer
+description: "WhatsApp group indexer — indexes and logs incoming messages"
+
+legacy_sources:
+  - source_type: prompt
+    source_path: "skills/whatsapp-group-indexer/SKILL.md"
+    section: "Group JID resolution"
+    expected_status: removed
+
+  - source_type: config
+    source_path: "~/.openclaw/openclaw.json"
+    config_key: "tools.mappings.whatsapp.groups.indexer"
+    expected_status: shadowed_unreachable

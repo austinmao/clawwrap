@@ -1,0 +1,87 @@
+name: send-group-message-verified
+version: 1.0.0
+schema_version: 1
+description: >
+  Send an outbound WhatsApp group message after full resolution, identity
+  verification, and operator approval. This wrapper enforces the complete
+  five-phase pipeline: resolve → verify → approve → execute → audit.
+  No group send may bypass this wrapper for Ceremonia-bound outbound flows.
+
+inputs:
+  - name: group_name
+    type: string
+    required: true
+    description: Canonical group name to send to
+  - name: message_draft
+    type: string
+    required: true
+    description: Full message draft to be sent (staged for approval before execute)
+  - name: flow_name
+    type: string
+    required: true
+    description: Originating flow name for audit trail
+  - name: dry_run
+    type: boolean
+    required: false
+    description: If true, validates all phases but does not send
+
+outputs:
+  - name: send_receipt
+    type: object
+    description: Delivery receipt from wacli including message ID and timestamp
+  - name: audit_ref
+    type: string
+    description: Reference to the audit log entry
+
+stages:
+  - phase: resolve
+    expects:
+      group_name: string
+    produces:
+      resolved_jid: string
+      resolution_path: string
+  - phase: verify
+    expects:
+      resolved_jid: string
+      group_name: string
+    produces:
+      identity_verified: boolean
+      verification_evidence: object
+  - phase: approve
+    expects:
+      resolved_jid: string
+      message_draft: string
+    produces:
+      approval_hash: string
+      approved_by: string
+  - phase: execute
+    expects:
+      resolved_jid: string
+      message_draft: string
+      approval_hash: string
+      dry_run: boolean
+    produces:
+      send_receipt: object
+  - phase: audit
+    expects:
+      send_receipt: object
+      approval_hash: string
+      resolution_path: string
+    produces:
+      audit_ref: string
+
+providers:
+  - kind: wacli
+    config_ref: openclaw.providers.wacli
+
+dependencies:
+  - name: resolve-group
+    version_constraint: ">=1.0.0"
+  - name: verify-group-identity
+    version_constraint: ">=1.0.0"
+
+policies:
+  - name: canonical-target-resolution
+    version_constraint: ">=1.0.0"
+
+approval_role: operator

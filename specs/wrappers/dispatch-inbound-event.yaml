@@ -1,0 +1,35 @@
+name: dispatch-inbound-event
+version: "1.0.0"
+schema_version: 1
+description: "Dispatch an inbound WhatsApp event to the appropriate handler flow"
+
+inputs:
+  - name: event_payload
+    type: object
+    required: true
+    description: "Raw inbound event payload"
+  - name: source_jid
+    type: string
+    required: true
+    description: "Source group or contact JID"
+
+outputs:
+  - name: dispatch_target
+    type: string
+    description: "Flow name the event was dispatched to"
+  - name: dispatch_result
+    type: object
+    description: "Result from the target flow handler"
+
+stages:
+  - phase: resolve
+    expects: { source_jid: string, event_payload: object }
+    produces: { dispatch_target: string, resolved_handler: string }
+  - phase: execute
+    expects: { dispatch_target: string, event_payload: object }
+    produces: { dispatch_result: object }
+  - phase: audit
+    expects: { dispatch_target: string, dispatch_result: object }
+    produces: { audit_record: object }
+
+approval_role: operator

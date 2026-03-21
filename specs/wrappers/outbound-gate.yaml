@@ -1,0 +1,79 @@
+name: outbound-gate
+version: "1.0.0"
+schema_version: 1
+description: >
+  Universal outbound message gate. Every agent-initiated send
+  passes through this wrapper. No skill calls a send handler directly.
+  The gate validates the target, not the permission to send —
+  human approval (Constitution Principle I) remains in the calling skill.
+
+inputs:
+  - name: route_mode
+    type: string
+    required: true
+    description: "'shared' for context/audience destinations, 'direct' for person-level recipient refs"
+  - name: context_key
+    type: string
+    required: false
+    description: "Lookup key in targets directory for shared routes (e.g. awaken-apr-2026)"
+  - name: audience
+    type: string
+    required: false
+    description: "Intended audience for shared routes (e.g. staff, participant)"
+  - name: recipient_ref
+    type: string
+    required: false
+    description: "Canonical person reference for direct routes (e.g. airtable:contacts/rec123)"
+  - name: channel
+    type: string
+    required: true
+    description: "Target channel (whatsapp, email, imessage, sms)"
+  - name: message
+    type: string
+    required: true
+    description: "Message body"
+  - name: requested_by
+    type: string
+    required: true
+    description: "Skill name that initiated this send"
+  - name: dry_run
+    type: boolean
+    required: false
+    description: "When true, resolve and verify but skip the actual send"
+
+outputs:
+  - name: allowed
+    type: boolean
+    description: "Whether the gate permitted the send"
+  - name: target
+    type: string
+    description: "Resolved target address (JID, email, phone)"
+  - name: audience_label
+    type: string
+    description: "Human-readable label shown in audit log"
+  - name: denied_by
+    type: string
+    description: "Name of the check that blocked the send, if any"
+
+stages:
+  - phase: resolve
+    expects: { route_mode: string, context_key: string, audience: string, recipient_ref: string, channel: string }
+    produces: { target: string, audience_label: string, expected_identity: object }
+
+  - phase: verify
+    expects: { target: string, audience_label: string, expected_identity: object, channel: string }
+    produces: { allowed: boolean, checks: array, denied_by: string }
+
+  - phase: approve
+    expects: { allowed: boolean }
+    produces: { approved: boolean }
+
+  - phase: execute
+    expects: { target: string, channel: string, message: string, dry_run: boolean }
+    produces: { message_id: string, sent_at: string }
+
+  - phase: audit
+    expects: { allowed: boolean, target: string, channel: string, requested_by: string }
+    produces: { request_id: string, logged: boolean }
+
+approval_role: operator

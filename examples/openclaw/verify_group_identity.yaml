@@ -1,0 +1,55 @@
+name: verify-group-identity
+version: 1.0.0
+schema_version: 1
+description: >
+  Verify that a resolved WhatsApp JID corresponds to the expected group
+  identity by checking membership, name, and absence of hardcoded JID
+  references. Runs as the verification phase of the outbound pipeline.
+
+inputs:
+  - name: resolved_jid
+    type: string
+    required: true
+    description: WhatsApp JID produced by the resolve-group wrapper
+  - name: expected_group_name
+    type: string
+    required: true
+    description: Canonical group name used to verify the resolved JID
+
+outputs:
+  - name: identity_verified
+    type: boolean
+    description: True when JID matches expected group identity
+  - name: verification_evidence
+    type: object
+    description: Evidence payload including membership check and name match results
+
+stages:
+  - phase: verify
+    expects:
+      resolved_jid: string
+      expected_group_name: string
+    produces:
+      identity_verified: boolean
+      membership_check: object
+      name_match: boolean
+  - phase: audit
+    expects:
+      identity_verified: boolean
+      verification_evidence: object
+    produces:
+      audit_ref: string
+
+providers:
+  - kind: wacli
+    config_ref: openclaw.providers.wacli
+
+dependencies:
+  - name: resolve-group
+    version_constraint: ">=1.0.0"
+
+policies:
+  - name: canonical-target-resolution
+    version_constraint: ">=1.0.0"
+
+approval_role: operator

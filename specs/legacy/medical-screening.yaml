@@ -1,0 +1,18 @@
+flow_name: medical-screening
+description: "Medical screening WhatsApp group send flow"
+
+legacy_sources:
+  - source_type: prompt
+    source_path: "agents/programs/medical-screener/SOUL.md"
+    section: "WhatsApp group routing"
+    expected_status: removed
+
+  - source_type: config
+    source_path: "~/.openclaw/openclaw.json"
+    config_key: "tools.mappings.whatsapp.groups.medical-screening"
+    expected_status: shadowed_unreachable
+
+  - source_type: prompt
+    source_path: "agents/programs/medical-screener/AGENTS.md"
+    section: "Group send instructions"
+    expected_status: removed

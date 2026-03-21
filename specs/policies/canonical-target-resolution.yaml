@@ -1,0 +1,25 @@
+name: canonical-target-resolution
+version: "1.0.0"
+schema_version: 1
+description: "Enforce canonical resolution of outbound targets from routing metadata"
+
+checks:
+  - handler_id: target.resolve_from_canonical
+    phase: resolve
+    params:
+      source: canonical_routing_metadata
+      fallback: deny
+    fail_action: block
+
+  - handler_id: target.verify_no_hardcoded_jid
+    phase: verify
+    params: {}
+    fail_action: block
+
+  - handler_id: audit.log_resolution_path
+    phase: audit
+    params:
+      include_evidence: true
+    fail_action: warn
+
+approval_role: approver

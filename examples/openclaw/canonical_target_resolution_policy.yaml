@@ -1,0 +1,36 @@
+name: canonical-target-resolution
+version: 1.0.0
+schema_version: 1
+description: >
+  Enforces canonical group target resolution for all Ceremonia WhatsApp flows.
+  No outbound or inbound-triggered action may proceed without first resolving
+  the group name to a verified JID via the canonical mapping registry and
+  confirming group identity. Blocks on any hardcoded JID usage.
+
+checks:
+  - handler_id: target.resolve_from_canonical
+    phase: resolve
+    params:
+      registry_source: openclaw.config.group_mappings
+      allow_ambiguous: false
+    fail_action: block
+
+  - handler_id: group.identity_matches
+    phase: verify
+    params:
+      check_membership: true
+      check_name_match: true
+    fail_action: block
+
+  - handler_id: target.verify_no_hardcoded_jid
+    phase: verify
+    params: {}
+    fail_action: block
+
+  - handler_id: audit.log_resolution_path
+    phase: audit
+    params:
+      log_destination: memory/logs/sends
+    fail_action: warn
+
+approval_role: operator

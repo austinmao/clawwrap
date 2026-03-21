@@ -1,0 +1,13 @@
+name: identity-verification
+version: "1.0.0"
+schema_version: 1
+description: "Verify group identity matches expected target before any outbound action"
+
+checks:
+  - handler_id: group.identity_matches
+    phase: verify
+    params:
+      strict: true
+    fail_action: block
+
+approval_role: approver

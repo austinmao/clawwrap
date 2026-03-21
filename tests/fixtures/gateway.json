@@ -1,0 +1,24 @@
+{
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "dmPolicy": "pairing",
+      "groups": {
+        "*": {
+          "requireMention": true
+        }
+      }
+    },
+    "email": {
+      "enabled": true
+    },
+    "slack": {
+      "enabled": true
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "port": 18789
+  }
+}

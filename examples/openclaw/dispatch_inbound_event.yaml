@@ -1,0 +1,69 @@
+name: dispatch-inbound-event
+version: 1.0.0
+schema_version: 1
+description: >
+  Route an inbound WhatsApp event (message, reaction, receipt) to the
+  appropriate handler after resolving the source group identity. Ensures
+  no inbound event triggers a Ceremonia action without first verifying
+  the source group's canonical identity.
+
+inputs:
+  - name: event_type
+    type: string
+    required: true
+    description: Inbound event type (message, reaction, read_receipt, group_update)
+  - name: raw_jid
+    type: string
+    required: true
+    description: Raw sender JID from the inbound webhook
+  - name: payload
+    type: object
+    required: true
+    description: Full inbound event payload
+
+outputs:
+  - name: handler_invoked
+    type: string
+    description: Name of the handler that processed the event
+  - name: routing_decision
+    type: object
+    description: Full routing trace for audit purposes
+
+stages:
+  - phase: resolve
+    expects:
+      raw_jid: string
+    produces:
+      canonical_group_name: string
+      resolution_path: string
+  - phase: verify
+    expects:
+      raw_jid: string
+      canonical_group_name: string
+    produces:
+      identity_verified: boolean
+  - phase: execute
+    expects:
+      event_type: string
+      canonical_group_name: string
+      identity_verified: boolean
+      payload: object
+    produces:
+      handler_invoked: string
+      routing_decision: object
+  - phase: audit
+    expects:
+      handler_invoked: string
+      routing_decision: object
+    produces:
+      audit_ref: string
+
+providers:
+  - kind: wacli
+    config_ref: openclaw.providers.wacli
+
+policies:
+  - name: canonical-target-resolution
+    version_constraint: ">=1.0.0"
+
+approval_role: operator

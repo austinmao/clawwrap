@@ -1,0 +1,65 @@
+name: send-group-message-verified
+version: "1.0.0"
+schema_version: 1
+description: "Send a message to a verified WhatsApp group through the full approval pipeline"
+
+inputs:
+  - name: flow_name
+    type: string
+    required: true
+    description: "Originating flow name"
+  - name: message_content
+    type: string
+    required: true
+    description: "Message body to send"
+  - name: message_type
+    type: string
+    required: false
+    description: "Message type (text, template, media)"
+
+outputs:
+  - name: send_result
+    type: object
+    description: "Send confirmation with message ID and timestamp"
+  - name: audit_trail
+    type: object
+    description: "Full audit trail of resolution, verification, and send"
+
+stages:
+  - phase: resolve
+    expects: { flow_name: string }
+    produces: { resolved_jid: string, resolution_source: string }
+  - phase: verify
+    expects: { resolved_jid: string }
+    produces: { identity_verified: boolean }
+  - phase: approve
+    expects: { resolved_jid: string, identity_verified: boolean, message_content: string }
+    produces: { approval_granted: boolean }
+  - phase: execute
+    expects: { resolved_jid: string, message_content: string, approval_granted: boolean }
+    produces: { send_result: object }
+  - phase: audit
+    expects: { send_result: object }
+    produces: { audit_trail: object }
+
+providers:
+  - kind: whatsapp
+    config_ref: "doppler://WHATSAPP_CONFIG"
+
+dependencies:
+  - name: resolve-group
+    version_constraint: ">=1.0.0"
+  - name: verify-group-identity
+    version_constraint: ">=1.0.0"
+
+policies:
+  - name: canonical-target-resolution
+    version_constraint: ">=1.0.0"
+  - name: identity-verification
+    version_constraint: ">=1.0.0"
+  - name: approval-requirements
+    version_constraint: ">=1.0.0"
+  - name: outbound-audit
+    version_constraint: ">=1.0.0"
+
+approval_role: approver

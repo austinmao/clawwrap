@@ -1,0 +1,57 @@
+name: openclaw
+version: "1.0.0"
+schema_version: 1
+description: >
+  Host adapter for the OpenClaw agent runtime (Ceremonia production environment).
+  Handles Ceremonia-bound outbound WhatsApp flows through the full
+  clawwrap pipeline: canonical target resolution, group identity verification,
+  hardcoded-JID prevention, and audit trail logging.
+  Approval identity supports OpenClaw gateway sessions (operator role)
+  and Austin's Slack-attested approval from #lumina-bot (admin role)
+  required for all Ceremonia outbound group sends.
+
+supported_handlers:
+  - handler_id: group.identity_matches
+    contract_version: "1.0.0"
+    binding_module: clawwrap.adapters.openclaw.handlers.group_identity
+
+  - handler_id: target.resolve_from_canonical
+    contract_version: "1.0.0"
+    binding_module: clawwrap.adapters.openclaw.handlers.target_resolve
+
+  - handler_id: target.verify_no_hardcoded_jid
+    contract_version: "1.0.0"
+    binding_module: clawwrap.adapters.openclaw.handlers.jid_verify
+
+  - handler_id: audit.log_resolution_path
+    contract_version: "1.0.0"
+    binding_module: clawwrap.adapters.openclaw.handlers.audit_log
+
+approval_identity:
+  source_type: openclaw_session
+  subject_key: operator_id
+  trust_basis: "OpenClaw gateway authenticated session"
+
+owned_surfaces:
+  # Generated runtime descriptor YAML files per wrapper.
+  - surface_type: file
+    selector_pattern: "agents/*/generated/*.yaml"
+
+  # WhatsApp group canonical mapping entries in openclaw.json.
+  - surface_type: config_key
+    selector_pattern: "tools.mappings.whatsapp.*"
+
+  # clawwrap-managed prompt fragment sections in agent SOUL.md files.
+  # Base SOUL.md content is never patched; only explicitly managed fragments.
+  - surface_type: prompt_fragment
+    selector_pattern: "agents/*/SOUL.md#clawwrap-managed-*"
+
+  # WhatsApp group JID mapping entries.
+  - surface_type: mapping_entry
+    selector_pattern: "tools.mappings.whatsapp.groups.*"
+
+capabilities:
+  - wacli
+  - file_write
+  - config_patch
+  - prompt_fragment_inject

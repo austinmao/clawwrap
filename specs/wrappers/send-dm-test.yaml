@@ -1,0 +1,55 @@
+name: send-dm-test
+version: "1.0.0"
+schema_version: 1
+description: "Send a single test DM via wacli and verify delivery. Loopback-safe."
+
+inputs:
+  - name: to_jid
+    type: string
+    required: true
+    description: "WhatsApp JID of recipient (e.g. 13033324741@s.whatsapp.net)"
+  - name: message
+    type: string
+    required: true
+    description: "Message text to send"
+  - name: test_id
+    type: string
+    required: false
+    description: "Optional correlation ID for this test run"
+
+outputs:
+  - name: message_id
+    type: string
+    description: "wacli-assigned message ID"
+  - name: verified
+    type: boolean
+    description: "True when outbound message was confirmed in local message store"
+  - name: round_trip_ms
+    type: integer
+    description: "Milliseconds from send to local store confirmation"
+  - name: rate_limit_applied
+    type: boolean
+    description: "True when the rate guard added a pre-send delay"
+
+stages:
+  - phase: resolve
+    expects: { to_jid: string }
+    produces: { normalized_jid: string, jid_type: string }
+
+  - phase: execute
+    expects: { normalized_jid: string, message: string }
+    produces: { message_id: string, sent_at: string, rate_limit_applied: boolean }
+
+  - phase: audit
+    expects: { normalized_jid: string, message_id: string, sent_at: string }
+    produces: { verified: boolean, round_trip_ms: integer, detail: string }
+
+providers:
+  - kind: wacli
+    config_ref: "env://WACLI_STORE"
+
+policies:
+  - name: outbound-audit
+    version_constraint: ">=1.0.0"
+
+approval_role: operator

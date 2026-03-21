@@ -1,0 +1,60 @@
+name: resolve-group
+version: 1.0.0
+schema_version: 1
+description: >
+  Resolve a canonical group name to a verified WhatsApp JID using the
+  canonical target resolution policy. Blocks on any unresolvable or
+  ambiguous group name before any outbound action is attempted.
+
+inputs:
+  - name: flow_name
+    type: string
+    required: true
+    description: Symbolic name of the WhatsApp flow being executed (e.g. "participant-prep")
+  - name: group_name
+    type: string
+    required: true
+    description: Canonical group name as stored in the OpenClaw mapping registry
+  - name: context
+    type: string
+    required: false
+    description: Optional routing context hint (e.g. "retreat-2026-04")
+
+outputs:
+  - name: resolved_jid
+    type: string
+    description: Verified WhatsApp JID for the target group
+  - name: resolution_path
+    type: string
+    description: Trace of how the group was resolved (for audit)
+
+stages:
+  - phase: resolve
+    expects:
+      group_name: string
+      context: string | null
+    produces:
+      candidate_jids: list[string]
+      resolution_path: string
+  - phase: verify
+    expects:
+      candidate_jids: list[string]
+    produces:
+      resolved_jid: string
+      identity_verified: boolean
+  - phase: audit
+    expects:
+      resolved_jid: string
+      resolution_path: string
+    produces:
+      audit_ref: string
+
+providers:
+  - kind: wacli
+    config_ref: openclaw.providers.wacli
+
+policies:
+  - name: canonical-target-resolution
+    version_constraint: ">=1.0.0"
+
+approval_role: operator

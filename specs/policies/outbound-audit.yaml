@@ -1,0 +1,15 @@
+name: outbound-audit
+version: "1.0.0"
+schema_version: 1
+description: "Audit all outbound sends with full resolution and verification evidence"
+
+checks:
+  - handler_id: audit.log_resolution_path
+    phase: audit
+    params:
+      include_evidence: true
+      include_approval_record: true
+      include_send_result: true
+    fail_action: block
+
+approval_role: operator

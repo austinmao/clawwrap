@@ -1,0 +1,13 @@
+name: approval-requirements
+version: "1.0.0"
+schema_version: 1
+description: "Require explicit approval for outbound message sends"
+
+checks:
+  - handler_id: audit.log_resolution_path
+    phase: approve
+    params:
+      require_approval_record: true
+    fail_action: block
+
+approval_role: approver

@@ -1,0 +1,2 @@
+[console_scripts]
+clawwrap = clawwrap.cli.main:main

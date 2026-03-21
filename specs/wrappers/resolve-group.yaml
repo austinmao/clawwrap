@@ -1,0 +1,40 @@
+name: resolve-group
+version: "1.0.0"
+schema_version: 1
+description: "Resolve a WhatsApp group target from canonical routing metadata"
+
+inputs:
+  - name: flow_name
+    type: string
+    required: true
+    description: "Name of the flow requesting resolution"
+  - name: target_hint
+    type: string
+    required: false
+    description: "Optional hint for target selection"
+
+outputs:
+  - name: resolved_jid
+    type: string
+    description: "Resolved WhatsApp group JID"
+  - name: resolution_evidence
+    type: object
+    description: "Evidence of how resolution was performed"
+
+stages:
+  - phase: resolve
+    expects: { flow_name: string }
+    produces: { resolved_jid: string, resolution_source: string }
+  - phase: audit
+    expects: { resolved_jid: string }
+    produces: { audit_record: object }
+
+providers:
+  - kind: whatsapp
+    config_ref: "doppler://WHATSAPP_CONFIG"
+
+policies:
+  - name: canonical-target-resolution
+    version_constraint: ">=1.0.0"
+
+approval_role: operator

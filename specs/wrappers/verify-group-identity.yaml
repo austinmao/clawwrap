@@ -1,0 +1,36 @@
+name: verify-group-identity
+version: "1.0.0"
+schema_version: 1
+description: "Verify the identity of a resolved WhatsApp group via wacli"
+
+inputs:
+  - name: resolved_jid
+    type: string
+    required: true
+    description: "Group JID to verify"
+  - name: expected_name
+    type: string
+    required: false
+    description: "Expected group name for cross-check"
+
+outputs:
+  - name: identity_verified
+    type: boolean
+    description: "Whether the group identity was confirmed"
+  - name: verification_method
+    type: string
+    description: "Method used for verification"
+
+stages:
+  - phase: verify
+    expects: { resolved_jid: string }
+    produces: { identity_verified: boolean, verification_method: string }
+  - phase: audit
+    expects: { resolved_jid: string, identity_verified: boolean }
+    produces: { audit_record: object }
+
+policies:
+  - name: identity-verification
+    version_constraint: ">=1.0.0"
+
+approval_role: approver
