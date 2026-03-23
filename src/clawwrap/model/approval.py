@@ -6,7 +6,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from clawwrap.model.types import ApprovalRole
@@ -142,7 +142,7 @@ class DriftExceptionRecord:
             subject_id=subject_id,
             role=role,
             original_apply_role=original_apply_role,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(UTC),
         )
 
     @classmethod

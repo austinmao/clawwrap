@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from clawwrap.adapters.base import AdapterProtocol
@@ -122,7 +122,7 @@ def check_conformance(
     comparisons = _compare_surfaces(expected_surfaces, observed_state)
 
     overall = _aggregate_status(comparisons)
-    checked_at = datetime.utcnow()
+    checked_at = datetime.now(UTC)
 
     result = ConformanceResult(
         run_id=run.id,

@@ -11,7 +11,7 @@ Covers:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -29,7 +29,7 @@ from clawwrap.model.wrapper import Wrapper
 
 def _make_run(status: RunStatus, resolved_inputs: dict[str, Any] | None = None) -> Run:
     """Build a Run dataclass in the given status."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     return Run(
         id=uuid.uuid4(),
         wrapper_name="test-wrapper",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from psycopg.rows import dict_row
@@ -136,7 +136,7 @@ class PostgresRunStore(RunStore):
         resolved_inputs: dict[str, Any] | None = None,
     ) -> Run:
         """Update run status (and optionally resolved_inputs). Raises KeyError if missing."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         current_phase = _STATUS_TO_PHASE.get(status, RunPhase.audit)
         if resolved_inputs is not None:
             sql = """
@@ -262,7 +262,7 @@ class PostgresRunStore(RunStore):
         reason: str,
     ) -> ApprovalRecord:
         """Mark the active approval for a run as invalid. Raises KeyError if missing."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         sql = """
             UPDATE approval_records
             SET valid = false, invalidated_at = %(now)s, invalidation_reason = %(reason)s
@@ -312,7 +312,7 @@ class PostgresRunStore(RunStore):
                         "plan_content": _jsonb(plan_content),
                         "patch_items": _jsonb(patch_items),
                         "ownership_manifest": _jsonb(ownership_manifest),
-                        "created_at": datetime.utcnow(),
+                        "created_at": datetime.now(UTC),
                         "approval_hash": approval_hash,
                     },
                 )
@@ -374,7 +374,7 @@ class PostgresRunStore(RunStore):
                         "id": str(result_id),
                         "run_id": str(run_id),
                         "status": status,
-                        "checked_at": datetime.utcnow(),
+                        "checked_at": datetime.now(UTC),
                         "details": _jsonb(details),
                     },
                 )

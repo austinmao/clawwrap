@@ -114,6 +114,7 @@ class TestAirtableResolver:
 class TestRetreatGuruResolver:
     def test_resolve_returns_correct_tuple(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RETREAT_GURU_API_KEY", "fake-rg-key")
+        monkeypatch.setenv("RETREAT_GURU_BASE_URL", "https://example.retreat.guru/api/v1")
         payload = {
             "id": 42,
             "email": "participant@example.com",
@@ -130,6 +131,7 @@ class TestRetreatGuruResolver:
 
     def test_resolve_whatsapp_from_questions(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RETREAT_GURU_API_KEY", "fake-rg-key")
+        monkeypatch.setenv("RETREAT_GURU_BASE_URL", "https://example.retreat.guru/api/v1")
         payload = {
             "id": 99,
             "email": "bob@example.com",
@@ -147,12 +149,14 @@ class TestRetreatGuruResolver:
 
     def test_missing_api_key_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("RETREAT_GURU_API_KEY", raising=False)
+        monkeypatch.setenv("RETREAT_GURU_BASE_URL", "https://example.retreat.guru/api/v1")
         resolver = RetreatGuruRegistrationsResolver()
         with pytest.raises(ValueError, match="RETREAT_GURU_API_KEY is not set"):
             resolver.resolve("retreat_guru:registrations/42", "email")
 
     def test_api_error_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RETREAT_GURU_API_KEY", "fake-rg-key")
+        monkeypatch.setenv("RETREAT_GURU_BASE_URL", "https://example.retreat.guru/api/v1")
         with patch(
             "clawwrap.adapters.openclaw.resolvers._helpers.httpx.get",
             return_value=_mock_error_response(500),
@@ -163,6 +167,7 @@ class TestRetreatGuruResolver:
 
     def test_missing_email_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("RETREAT_GURU_API_KEY", "fake-rg-key")
+        monkeypatch.setenv("RETREAT_GURU_BASE_URL", "https://example.retreat.guru/api/v1")
         payload = {
             "id": 42,
             "first_name": "No",
@@ -181,6 +186,7 @@ class TestRetreatGuruResolver:
     def test_list_response_unwrapped(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Retreat Guru API can return a list; resolver should unwrap first element."""
         monkeypatch.setenv("RETREAT_GURU_API_KEY", "fake-rg-key")
+        monkeypatch.setenv("RETREAT_GURU_BASE_URL", "https://example.retreat.guru/api/v1")
         payload = [
             {
                 "id": 42,

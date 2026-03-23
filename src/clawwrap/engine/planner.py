@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from clawwrap.adapters.base import AdapterProtocol
@@ -75,7 +75,7 @@ class ApplyPlan:
             plan_content=plan_content,
             patch_items=patch_items,
             ownership_manifest=ownership_manifest,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             approval_hash=approval_hash,
         )
 

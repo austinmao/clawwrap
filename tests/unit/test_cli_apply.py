@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from argparse import Namespace
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -21,7 +21,7 @@ from clawwrap.model.types import RunPhase, RunStatus
 
 def _make_run(status: RunStatus = RunStatus.planned, adapter_name: str = "openclaw") -> Run:
     """Build a minimal Run for CLI tests."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     return Run(
         id=uuid.uuid4(),
         wrapper_name="verified-send",

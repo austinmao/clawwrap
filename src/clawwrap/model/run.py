@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from clawwrap.model.types import RunPhase, RunStatus
@@ -32,7 +32,7 @@ class Run:
         adapter_name: str,
     ) -> Run:
         """Create a new Run in pending status."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         return cls(
             id=uuid.uuid4(),
             wrapper_name=wrapper_name,
@@ -85,7 +85,7 @@ class StageTransition:
             id=uuid.uuid4(),
             run_id=run_id,
             to_phase=to_phase,
-            transitioned_at=datetime.utcnow(),
+            transitioned_at=datetime.now(UTC),
             from_phase=from_phase,
             evidence=evidence,
         )
