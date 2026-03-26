@@ -124,6 +124,51 @@ pip install clawscaffold
 clawscaffold adopt --name outbound/email-send --source src/clawwrap/adapters/openclaw/handlers/email_send.py --kind skill
 ```
 
+## OpenClaw Gateway Plugin
+
+ClawWrap ships with a gateway plugin that registers the `clawwrap` tool directly in the OpenClaw gateway. The plugin delegates all subcommands to the Python CLI via `child_process`.
+
+### Installation
+
+1. Copy the `extensions/clawwrap/` directory into your OpenClaw workspace:
+
+```bash
+cp -r extensions/clawwrap/ ~/.openclaw/extensions/clawwrap/
+```
+
+2. Register the plugin in your `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "extensions": {
+    "clawwrap": {
+      "repoRoot": "/path/to/your/workspace",
+      "timeoutMs": 60000
+    }
+  }
+}
+```
+
+3. Restart the gateway:
+
+```bash
+openclaw gateway restart
+```
+
+### Plugin Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `repoRoot` | string | `$OPENCLAW_WORKSPACE` or `cwd` | Workspace root containing the clawwrap package |
+| `pythonBin` | string | `<repoRoot>/clawpipe/.venv/bin/python` | Path to Python binary |
+| `timeoutMs` | integer | `60000` | CLI execution timeout in milliseconds |
+
+### Supported Actions
+
+`version`, `init`, `migrate`, `validate`, `graph`, `run`, `apply`, `conformance`, `handler`, `legacy`
+
+See the [openclaw.plugin.json](extensions/clawwrap/openclaw.plugin.json) for the full config schema.
+
 ## Related Projects
 
 - **[ClawSpec](https://github.com/austinmao/clawspec)** — Contract-first QA for OpenClaw skills and agents
