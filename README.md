@@ -184,17 +184,20 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## OpenClaw Suite
+## ClawSuite
 
-Part of the OpenClaw open-source toolchain:
+This package is part of **ClawSuite** — the OpenClaw agent infrastructure toolkit.
 
 | Package | Description | Repo |
-|---------|-------------|------|
-| **ClawPipe** | Config-driven pipeline orchestration engine | [austinmao/clawpipe](https://github.com/austinmao/clawpipe) |
-| **ClawSpec** | Contract-first QA for skills and agents | [austinmao/clawspec](https://github.com/austinmao/clawspec) |
-| **ClawWrap** | Outbound message routing and policy enforcement | [austinmao/clawwrap](https://github.com/austinmao/clawwrap) |
-| **ClawAgentSkill** | Agent and skill discovery, security scanning | [austinmao/clawagentskill](https://github.com/austinmao/clawagentskill) |
-| **ClawScaffold** | Agent and skill scaffolding and lifecycle management | [austinmao/clawscaffold](https://github.com/austinmao/clawscaffold) |
+|---|---|---|
+| **ClawPipe** | Config-driven pipeline orchestration | [austinmao/clawpipe](https://github.com/austinmao/clawpipe) |
+| **ClawSpec** | Contract-first testing for skills & agents | [austinmao/clawspec](https://github.com/austinmao/clawspec) |
+| **ClawWrap** | Outbound policy & conformance engine | [austinmao/clawwrap](https://github.com/austinmao/clawwrap) |
+| **ClawAgentSkill** | Skill discovery, scanning & adoption | [austinmao/clawagentskill](https://github.com/austinmao/clawagentskill) |
+| **ClawScaffold** | Agent/skill scaffold interviews | [austinmao/clawscaffold](https://github.com/austinmao/clawscaffold) |
+| **ClawInterview** | Pipeline interview compilation & execution | *(coming soon)* |
+
+All packages include OpenClaw gateway plugins for autonomous agent access.
 
 ## License
 
