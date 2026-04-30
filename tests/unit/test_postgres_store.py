@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -69,7 +69,7 @@ def test_update_run_status_persists_current_phase(
 ) -> None:
     """update_run_status must write the derived current_phase alongside status changes."""
     run_id = uuid.uuid4()
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     row = {
         "id": str(run_id),
         "wrapper_name": "verified-send",

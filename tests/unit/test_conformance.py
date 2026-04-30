@@ -10,7 +10,7 @@ and its use in CutoverResult from legacy.py).
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -287,8 +287,8 @@ class TestCheckConformance:
             adapter_name="openclaw",
             current_phase=RunPhase.audit,
             status=RunStatus.conformance_pending,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
             resolved_inputs={},
         )
         store = MagicMock()

@@ -2,15 +2,41 @@
 
 Provides sample dicts and tmp_path-based YAML file fixtures.
 No Postgres fixtures are included — those require a live DB.
+
+T001 (spec 085): BB_INTEGRATION_TEST env-gating for real-network integration tests.
+Mark tests with `@pytest.mark.bb_integration` to require the env var.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip @pytest.mark.bb_integration tests unless BB_INTEGRATION_TEST=1 is set.
+
+    Spec 085 gates live BlueBubbles/WhatsApp sends behind this env var so CI
+    and local dev never accidentally trigger real network sends.
+    """
+    if os.getenv("BB_INTEGRATION_TEST") == "1":
+        return
+    skip_marker = pytest.mark.skip(reason="Set BB_INTEGRATION_TEST=1 to run (live network)")
+    for item in items:
+        if "bb_integration" in item.keywords:
+            item.add_marker(skip_marker)
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register the bb_integration marker so pytest doesn't warn on unknown marks."""
+    config.addinivalue_line(
+        "markers",
+        "bb_integration: test requires BB_INTEGRATION_TEST=1 env var (live network send)",
+    )
 
 # ---------------------------------------------------------------------------
 # Sample raw dicts (as yaml.safe_load would return)

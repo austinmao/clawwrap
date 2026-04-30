@@ -14,6 +14,13 @@ from clawwrap.adapters.openclaw.handlers.outbound_submit import submit
 
 class _StubResolver:
     def resolve(self, recipient_ref: str, channel: str) -> tuple[str, str, str]:
+        # Spec 085 test fixtures — spec 085 BB/WA flows use rec-bb-1.
+        if recipient_ref == "airtable:contacts/rec-bb-1" and channel in (
+            "bluebubbles", "imessage",
+        ):
+            return "+14155550100", "Test BB contact (rec-bb-1)", "rec-bb-1"
+        if recipient_ref == "airtable:contacts/rec-wa-1" and channel == "whatsapp":
+            return "+14155550101", "Test WA contact (rec-wa-1)", "rec-wa-1"
         if recipient_ref != "airtable:contacts/rec123":
             raise ValueError("unexpected ref")
         if channel != "email":
@@ -103,6 +110,8 @@ def _setup_config(tmp_path: Path) -> tuple[Path, Path, Path]:
             "whatsapp": {"enabled": True},
             "email": {"enabled": True},
             "slack": {"enabled": True},
+            "bluebubbles": {"enabled": True},
+            "imessage": {"enabled": True},
         },
     }))
 
@@ -345,3 +354,141 @@ class TestSubmitSlackDryRun:
         assert result["verification_supported"] is True
         live_check = next(c for c in result["checks"] if c["name"] == "live_identity_matches")
         assert live_check["passed"] is True
+
+
+class TestSpec085RateLimit:
+    """T024-T026: rate-limit integration in outbound.submit (spec 085 US5)."""
+
+    def test_rate_limit_blocks_dispatch(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """T024: guard raises RateLimitError → deny verdict, dispatch not called."""
+        from clawwrap.engine.rate_limit import RateLimitError
+
+        dispatch_spy = {"called": False}
+
+        def _boom_dispatch(*args, **kwargs):
+            dispatch_spy["called"] = True
+            raise AssertionError("dispatch must not be called when rate-limited")
+
+        class _ExhaustedGuard:
+            def check_and_record(self, *, dry_run: bool = False):
+                raise RateLimitError(
+                    "daily limit of 20 test sends reached. Reset tomorrow."
+                )
+
+        monkeypatch.setattr(
+            outbound_submit.RateLimitGuard,
+            "for_channel",
+            classmethod(lambda cls, channel, org_config: _ExhaustedGuard()),
+        )
+        monkeypatch.setattr(outbound_submit, "dispatch_to_channel", _boom_dispatch)
+
+        config_dir, gateway_path, log_dir = _setup_config(tmp_path)
+        # Add bluebubbles to policy allowlist for this test.
+        policy = yaml.safe_load((config_dir / "outbound-policy.yaml").read_text())
+        policy["allowlists"]["direct"]["bluebubbles"] = ["*"]
+        (config_dir / "outbound-policy.yaml").write_text(yaml.safe_dump(policy))
+
+        result = submit({
+            "route_mode": "direct",
+            "recipient_ref": "airtable:contacts/rec-bb-1",
+            "channel": "bluebubbles",
+            "message": "hi",
+            "requested_by": "spec-085-test",
+            "config_dir": str(config_dir),
+            "gateway_path": str(gateway_path),
+            "log_dir": str(log_dir),
+        })
+
+        assert result["allowed"] is False
+        assert result["denied_by"] == "rate_limit"
+        assert "daily limit" in result["reason"]
+        assert dispatch_spy["called"] is False
+
+    def test_gate_context_toggled_around_dispatch(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """T025: _gate_context.active is True during dispatch and False afterwards.
+
+        Also confirms audit log entry is written to the configured log_dir.
+        """
+        from clawwrap.engine.rate_limit import CheckResult
+        from clawwrap.gate import _gate_context
+
+        captured: dict[str, bool] = {}
+
+        def _fake_dispatch(*args, **kwargs):
+            captured["active_during_dispatch"] = getattr(_gate_context, "active", False)
+            return {
+                "messageId": "spy-1",
+                "channel": kwargs.get("channel", "bluebubbles"),
+                "status": "sent",
+            }
+
+        class _OkGuard:
+            def check_and_record(self, *, dry_run: bool = False):
+                return CheckResult(allowed=True, jitter_seconds=0.0, reason="ok")
+
+        monkeypatch.setattr(
+            outbound_submit.RateLimitGuard,
+            "for_channel",
+            classmethod(lambda cls, channel, org_config: _OkGuard()),
+        )
+        monkeypatch.setattr(outbound_submit, "dispatch_to_channel", _fake_dispatch)
+
+        _gate_context.active = False  # baseline
+
+        config_dir, gateway_path, log_dir = _setup_config(tmp_path)
+        policy = yaml.safe_load((config_dir / "outbound-policy.yaml").read_text())
+        policy["allowlists"]["direct"]["bluebubbles"] = ["*"]
+        (config_dir / "outbound-policy.yaml").write_text(yaml.safe_dump(policy))
+
+        result = submit({
+            "route_mode": "direct",
+            "recipient_ref": "airtable:contacts/rec-bb-1",
+            "channel": "bluebubbles",
+            "message": "hi",
+            "requested_by": "spec-085-test",
+            "config_dir": str(config_dir),
+            "gateway_path": str(gateway_path),
+            "log_dir": str(log_dir),
+        })
+
+        assert result["allowed"] is True
+        # Gate was active inside the dispatch callsite…
+        assert captured["active_during_dispatch"] is True
+        # …and reset afterwards (finally block ran).
+        assert getattr(_gate_context, "active", True) is False
+        # Audit log entry written.
+        log_files = list(log_dir.glob("*.yaml"))
+        assert log_files, "expected audit entry in log_dir"
+
+    def test_email_channel_not_rate_limited(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """T026: email (and slack/mailchimp) bypass the rate-limit guard entirely."""
+        # If RateLimitGuard.for_channel gets called for email, we fail loudly.
+        def _never_called(*args, **kwargs):
+            raise AssertionError(
+                "RateLimitGuard.for_channel must NOT be called for email"
+            )
+
+        monkeypatch.setattr(
+            outbound_submit.RateLimitGuard, "for_channel", _never_called
+        )
+
+        config_dir, gateway_path, log_dir = _setup_config(tmp_path)
+        result = submit({
+            "route_mode": "direct",
+            "recipient_ref": "airtable:contacts/rec123",
+            "channel": "email",
+            "message": "hi",
+            "requested_by": "spec-085-test",
+            "dry_run": True,
+            "config_dir": str(config_dir),
+            "gateway_path": str(gateway_path),
+            "log_dir": str(log_dir),
+        })
+        # Email flow executes without touching the rate-limit guard.
+        assert result["channel"] == "email"
