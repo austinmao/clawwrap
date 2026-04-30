@@ -12,7 +12,7 @@ Covers:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -296,7 +296,7 @@ class TestDriftExceptionRecordNew:
     def test_new_assigns_recorded_at(self) -> None:
         """DriftExceptionRecord.new must set recorded_at to a recent timestamp."""
         run_id, conformance_id = self._ids()
-        before = datetime.now(UTC)
+        before = datetime.utcnow()
         record = DriftExceptionRecord.new(
             run_id=run_id,
             conformance_id=conformance_id,
@@ -306,5 +306,5 @@ class TestDriftExceptionRecordNew:
             role=ApprovalRole.admin,
             original_apply_role=ApprovalRole.operator,
         )
-        after = datetime.now(UTC)
+        after = datetime.utcnow()
         assert before <= record.recorded_at <= after

@@ -8,9 +8,12 @@ The gate validates the TARGET, not the PERMISSION to send. Human approval
 """
 from __future__ import annotations
 
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from clawwrap.engine.gate import (
     GateVerdict,
@@ -19,11 +22,19 @@ from clawwrap.engine.gate import (
     make_request_id,
     now_iso,
 )
+from clawwrap.engine.rate_limit import RateLimitError, RateLimitGuard
+from clawwrap.gate import _gate_context
 from clawwrap.gate.audit import log_verdict
 from clawwrap.gate.dispatch import dispatch_to_channel
 from clawwrap.gate.resolve import load_targets, resolve_direct, resolve_shared
 from clawwrap.gate.verify import evaluate_checks, load_gateway_config, load_policy
 from clawwrap.handlers.registry import handler
+
+# Channels that go through the rate-limit guard before dispatch.
+# Email/slack/mailchimp have their own service-side throttling — clawwrap does
+# not second-guess them. BB/WA/iMessage are consumer-grade unofficial channels
+# where we enforce sending rhythm to avoid anti-bot triggers.
+_RATE_LIMITED_CHANNELS: set[str] = {"whatsapp", "bluebubbles", "imessage"}
 
 # Default paths — overridable via inputs for testing.
 _DEFAULT_CONFIG_DIR: Path = Path(__file__).resolve().parents[5] / "config"
@@ -151,9 +162,46 @@ def submit(inputs: dict[str, Any]) -> dict[str, Any]:
         _audit(verdict, audit_log_dir)
         return verdict.to_dict()
 
+    # --- RATE LIMIT (spec 085) ---
+    # For rate-limited channels, check the per-channel daily/interval budget
+    # BEFORE dispatch. On violation, return a deny verdict with the
+    # RateLimitError message in `reason` so callers see the specific limit.
+    rate_limit_jitter = 0.0
+    if req.channel in _RATE_LIMITED_CHANNELS and not req.dry_run and resolved.target:
+        try:
+            org_config = _load_org_config(config_dir)
+            guard = RateLimitGuard.for_channel(req.channel, org_config)
+            check = guard.check_and_record(dry_run=False)
+            rate_limit_jitter = float(check.jitter_seconds)
+        except RateLimitError as exc:
+            verdict = GateVerdict(
+                allowed=False,
+                request_id=request_id,
+                target=resolved.target,
+                audience_label=resolved.audience_label,
+                channel=req.channel,
+                requested_by=req.requested_by,
+                verification_supported=resolved.verification_supported,
+                live_identity=resolved.live_identity,
+                checks=checks,
+                denied_by="rate_limit",
+                reason=f"rate limit: {exc}",
+                timestamp=timestamp,
+            )
+            _audit(verdict, audit_log_dir)
+            return verdict.to_dict()
+
+    # Apply human jitter delay (10-15s WA, 3-5s BB) — skipped on dry_run.
+    if rate_limit_jitter > 0 and not req.dry_run:
+        time.sleep(rate_limit_jitter)
+
     # --- DISPATCH (skip on dry_run) ---
+    # Signal to channel handlers that we're inside the gate pipeline. Handlers
+    # check ``_gate_context.active`` to detect direct (out-of-gate) calls and
+    # raise EscapeHatchError unless CLAWWRAP_EMERGENCY=1 is set.
     send_result: dict[str, Any] | list[dict[str, Any]] | None = None
     if not req.dry_run and resolved.target:
+        _gate_context.active = True
         try:
             if isinstance(resolved.target, list):
                 # Email list fan-out: dispatch to each address individually.
@@ -180,6 +228,8 @@ def submit(inputs: dict[str, Any]) -> dict[str, Any]:
                 )
         except Exception as exc:
             send_result = {"message_id": "", "sent_at": "", "detail": f"dispatch error: {exc}"}
+        finally:
+            _gate_context.active = False
 
     # --- BUILD VERDICT ---
     verdict = GateVerdict(
@@ -234,6 +284,30 @@ def _audit(verdict: GateVerdict, log_dir: Path) -> None:
         log_verdict(verdict.to_dict(), log_dir)
     except Exception:
         pass  # audit is best-effort
+
+
+def _load_org_config(config_dir: Path) -> dict[str, Any]:
+    """Load config/org.yaml for rate-limit lookup. Returns {} on any failure.
+
+    The rate_limit guard is permissive when config is missing — per-channel
+    defaults in clawwrap.engine.rate_limit._CHANNEL_DEFAULTS apply instead.
+    """
+    # Repo config/org.yaml sits at the repo root, while config_dir often
+    # points at clawwrap/config. Try both in order.
+    candidates = [
+        config_dir / "org.yaml",
+        config_dir.parent / "org.yaml",
+        config_dir.parent / "config" / "org.yaml",
+    ]
+    for path in candidates:
+        if path.is_file():
+            try:
+                data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            except (OSError, yaml.YAMLError):
+                continue
+            if isinstance(data, dict):
+                return data
+    return {}
 
 
 def _build_adapter() -> Any:
